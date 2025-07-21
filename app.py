@@ -66,8 +66,29 @@ def chat():
         
         logger.info(f"Mensaje recibido: {user_message} (Role: {user_role})")
         
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """Endpoint principal para conversación con la IA"""
+    try:
+        # Obtener instancia de IA
+        ai = get_ai_instance()
+        
+        # Obtener datos del request
+        data = request.get_json()
+        
+        if not data or 'message' not in data:
+            return jsonify({
+                "error": "Mensaje requerido"
+            }), 400
+        
+        user_message = data['message']
+        user_role = data.get('role', 'alumno')  # alumno, profesor, directivo
+        user_id = data.get('user_id', None)
+        
+        logger.info(f"Mensaje recibido: {user_message} (Role: {user_role})")
+        
         # Procesar mensaje con la IA
-        response = ai_instance.process_message(
+        response = ai.process_message(
             message=user_message,
             user_role=user_role,
             user_id=user_id
@@ -96,8 +117,9 @@ def chat():
 def get_suggestions():
     """Obtener sugerencias de preguntas"""
     try:
+        ai = get_ai_instance()
         role = request.args.get('role', 'alumno')
-        suggestions = ai_instance.get_suggestions(role)
+        suggestions = ai.get_suggestions(role)
         
         return jsonify({
             "success": True,
@@ -115,7 +137,89 @@ def get_suggestions():
 def get_analytics():
     """Obtener analytics básicos del sistema"""
     try:
-        analytics = ai_instance.get_system_analytics()
+        ai = get_ai_instance()
+        analytics = ai.get_system_analytics()
+        
+        return jsonify({
+            "success": True,
+            "analytics": analytics
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo analytics: {e}")
+        return jsonify({
+            "success": False,
+            "error": "Error obteniendo analytics"
+        }), 500
+        
+        return jsonify({
+            "success": True,
+            "response": response['text'],
+            "data": response.get('data', None),
+            "query_used": response.get('query', None),
+            "recommendations": response.get('recommendations', []),
+            "timestamp": response.get('timestamp')
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en chat: {e}")
+        logger.error(traceback.format_exc())
+        
+        return jsonify({
+            "success": False,
+            "error": "Error procesando mensaje",
+            "details": str(e)
+        }), 500
+
+@app.route('/api/suggestions', methods=['GET'])
+def get_suggestions():
+    """Obtener sugerencias de preguntas"""
+    try:
+        role = request.args.get('role', 'alumno')
+        role = request.args.get('role', 'alumno')
+        suggestions = ai.get_suggestions(role)
+        
+        return jsonify({
+            "success": True,
+            "suggestions": suggestions
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo sugerencias: {e}")
+        return jsonify({
+            "success": False,
+            "error": "Error obteniendo sugerencias"
+        }), 500
+        
+        return jsonify({
+            "success": True,
+            "suggestions": suggestions
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo sugerencias: {e}")
+        return jsonify({
+            "success": False,
+            "error": "Error obteniendo sugerencias"
+        }), 500
+
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    """Obtener analytics básicos del sistema"""
+    try:
+        analytics = ai.get_system_analytics()
+        
+        return jsonify({
+            "success": True,
+            "analytics": analytics
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo analytics: {e}")
+        return jsonify({
+            "success": False,
+            "error": "Error obteniendo analytics"
+        }), 500
         
         return jsonify({
             "success": True,
@@ -141,25 +245,25 @@ def internal_error(error):
         "error": "Error interno del servidor"
     }), 500
 
-# Inicializar la aplicación
+# Inicializar la aplicación para desarrollo local
 if __name__ == '__main__':
-    if initialize_ai():
+    try:
+        # Inicializar IA para desarrollo local
+        get_ai_instance()
+        
         port = int(os.environ.get('PORT', 5000))
         debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
         
+        logger.info(f"Iniciando servidor en puerto {port}")
         app.run(
             host='0.0.0.0',
             port=port,
             debug=debug
         )
-    else:
-        logger.error("No se pudo inicializar la aplicación")
+    except Exception as e:
+        logger.error(f"Error iniciando aplicación: {e}")
 
-# Para Vercel
-def handler(request):
-    """Handler para Vercel"""
-    global ai_instance
-    if ai_instance is None:
-        initialize_ai()
-    
-    return app(request.environ, lambda *args: None)
+# Handler para Vercel (requerido)
+def handler(event, context):
+    """Handler para Vercel serverless"""
+    return app
