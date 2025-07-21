@@ -226,8 +226,7 @@ def health_check():
         return jsonify({
             "status": "ok",
             "message": "IA Conversacional funcionando",
-            "version": "1.0.0",
-            "timestamp": "2024"
+            
         })
     except Exception as e:
         logger.error(f"Error en health check: {str(e)}")
