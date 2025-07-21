@@ -1,16 +1,2 @@
-# Dependencias básicas para FastAPI
-fastapi==0.104.1
-pydantic==2.4.2
-python-dotenv==1.0.0
-
-# Base de datos MySQL
-mysql-connector-python==8.2.0
-
-# Utilidades
-python-multipart==0.0.6
-
-# Para Vercel Serverless
-mangum==0.17.0
-
-# Uvicorn para FastAPI
-uvicorn==0.24.0
+fastapi
+mangum
