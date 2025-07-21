@@ -1,5 +1,6 @@
 """
-FastAPI ChatBot IA - Optimizado para Vercel Serverless
+FastAPI ChatBot IA - Versión optimizada para Vercel
+Sin dependencias pesadas de ML
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+import os
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -159,33 +161,22 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
 @app.get("/")
 async def root():
     return {
-        "message": "🤖 DTAI ChatBot IA funcionando en Vercel",
-        "status": "✅ Activo",
+        "message": "🤖 DTAI ChatBot IA en Vercel",
+        "status": "✅ Funcionando",
         "version": "1.0.0",
-        "endpoints": {
-            "health": "/health",
-            "nueva_conversacion": "/api/chatbot/nueva-conversacion",
-            "mensaje": "/api/chatbot/mensaje",
-            "conversaciones": "/api/chatbot/conversaciones"
-        },
-        "timestamp": datetime.now().isoformat()
+        "endpoints": ["/health", "/api/chatbot/nueva-conversacion", "/api/chatbot/mensaje"]
     }
 
 @app.get("/health")
 async def health():
-    return {
-        "status": "✅ healthy", 
-        "ai_engine": "✅ loaded",
-        "vercel": "✅ running",
-        "timestamp": datetime.now().isoformat()
-    }
+    return {"status": "✅ healthy", "timestamp": datetime.now().isoformat()}
 
 @app.post("/api/chatbot/nueva-conversacion", response_model=ConversacionResponse)
 async def nueva_conversacion(token: str = Depends(verify_token)):
     chatbot.conversation_count += 1
     return ConversacionResponse(
         conversacionId=chatbot.conversation_count,
-        mensaje="✅ Conversación creada exitosamente"
+        mensaje="✅ Conversación creada"
     )
 
 @app.post("/api/chatbot/mensaje", response_model=MensajeResponse)
@@ -194,7 +185,7 @@ async def procesar_mensaje(request: MensajeRequest, token: str = Depends(verify_
         respuesta = chatbot.procesar_mensaje(request.mensaje, request.conversacionId)
         return MensajeResponse(**respuesta)
     except Exception as e:
-        logger.error(f"Error procesando mensaje: {e}")
+        logger.error(f"Error: {e}")
         return MensajeResponse(
             respuesta="❌ Error procesando mensaje. Intenta de nuevo.",
             datos_contexto={"error": True},
@@ -203,29 +194,12 @@ async def procesar_mensaje(request: MensajeRequest, token: str = Depends(verify_
 
 @app.get("/api/chatbot/conversaciones")
 async def get_conversaciones(token: str = Depends(verify_token)):
-    return [
-        {
-            "id": 1, 
-            "titulo": "Conversación de prueba", 
-            "fecha_creacion": datetime.now().isoformat(),
-            "fecha_actualizacion": datetime.now().isoformat()
-        }
-    ]
+    return [{"id": 1, "titulo": "Conversación de prueba", "fecha_creacion": datetime.now().isoformat()}]
 
 @app.get("/api/chatbot/conversacion/{conv_id}")
 async def get_conversacion(conv_id: int, token: str = Depends(verify_token)):
-    return {
-        "conversacionId": conv_id, 
-        "mensajes": [
-            {
-                "id": 1,
-                "tipo_mensaje": "pregunta", 
-                "contenido": "¿Cuántos estudiantes hay?",
-                "timestamp": datetime.now().isoformat()
-            }
-        ]
-    }
+    return {"conversacionId": conv_id, "mensajes": []}
 
-# Handler para Vercel
+# Para Vercel
 from mangum import Mangum
 handler = Mangum(app)
