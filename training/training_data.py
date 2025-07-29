@@ -1,9 +1,4 @@
-"""
-Datos de entrenamiento para la IA conversacional
-Contiene ejemplos de preguntas y sus intenciones correspondientes
-"""
 
-# Dataset de entrenamiento por intención
 TRAINING_DATA = {
     'ver_calificaciones': [
         "¿Cuáles son mis calificaciones?",
@@ -135,8 +130,6 @@ TRAINING_DATA = {
         "Necesito hablar con alguien"
     ]
 }
-
-# Patrones de respuesta por intención
 RESPONSE_PATTERNS = {
     'ver_calificaciones': {
         'no_data': [
@@ -177,8 +170,6 @@ RESPONSE_PATTERNS = {
         ]
     }
 }
-
-# Ejemplos de conversaciones completas
 CONVERSATION_EXAMPLES = [
     {
         'role': 'alumno',
@@ -216,8 +207,6 @@ CONVERSATION_EXAMPLES = [
         ]
     }
 ]
-
-# Entidades comunes del dominio educativo
 DOMAIN_ENTITIES = {
     'carreras': [
         'sistemas', 'industrial', 'administracion', 'mecatronica', 'gastronomia',
@@ -252,14 +241,10 @@ DOMAIN_ENTITIES = {
         'regular', 'irregular', 'condicional'
     ]
 }
-
-# Funciones para obtener datos de entrenamiento
 def get_training_data_by_intent(intent):
-    """Obtener datos de entrenamiento para una intención específica"""
     return TRAINING_DATA.get(intent, [])
 
 def get_all_training_data():
-    """Obtener todos los datos de entrenamiento"""
     all_data = []
     for intent, examples in TRAINING_DATA.items():
         for example in examples:
@@ -270,27 +255,19 @@ def get_all_training_data():
     return all_data
 
 def get_response_patterns_for_intent(intent):
-    """Obtener patrones de respuesta para una intención"""
     return RESPONSE_PATTERNS.get(intent, {})
 
 def get_conversation_examples_by_role(role):
-    """Obtener ejemplos de conversación por rol"""
     return [conv for conv in CONVERSATION_EXAMPLES if conv['role'] == role]
 
 def get_domain_entities():
-    """Obtener todas las entidades del dominio"""
     return DOMAIN_ENTITIES
 
 def validate_training_data():
-    """Validar la consistencia de los datos de entrenamiento"""
     issues = []
-    
-    # Verificar que todas las intenciones tengan ejemplos
     for intent in TRAINING_DATA:
         if len(TRAINING_DATA[intent]) < 5:
             issues.append(f"Intención '{intent}' tiene pocos ejemplos ({len(TRAINING_DATA[intent])})")
-    
-    # Verificar que no haya duplicados
     all_texts = []
     for examples in TRAINING_DATA.values():
         all_texts.extend(examples)
@@ -299,10 +276,7 @@ def validate_training_data():
         issues.append("Hay ejemplos duplicados en los datos de entrenamiento")
     
     return issues
-
-# Función para generar más datos sintéticos
 def generate_synthetic_data(intent, count=10):
-    """Generar datos sintéticos para una intención"""
     templates = {
         'ver_calificaciones': [
             "¿Cómo van mis {materia}?",
@@ -318,6 +292,4 @@ def generate_synthetic_data(intent, count=10):
         ]
     }
     
-    # Esta función se puede expandir para generar datos más diversos
-    # Por ahora retorna los templates básicos
     return templates.get(intent, [])

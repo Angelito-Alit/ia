@@ -1,10 +1,3 @@
-# models/__init__.py
-"""
-Módulo de modelos de IA para el sistema conversacional educativo.
-Contiene los componentes principales para procesamiento de lenguaje natural,
-generación de consultas SQL y formateo de respuestas.
-"""
-
 from .conversation_ai import ConversationAI
 from .query_generator import QueryGenerator
 from .response_formatter import ResponseFormatter
@@ -18,14 +11,6 @@ __all__ = [
 __version__ = '1.0.0'
 __author__ = 'Sistema IA Educativo'
 
-# ==============================================================================
-
-# database/__init__.py
-"""
-Módulo de base de datos para el sistema de IA conversacional.
-Proporciona conexión, análisis de esquema y ejecución de consultas para MySQL.
-"""
-
 from .connection import DatabaseConnection
 from .schema_analyzer import SchemaAnalyzer
 from .query_executor import QueryExecutor
@@ -37,8 +22,6 @@ __all__ = [
 ]
 
 __version__ = '1.0.0'
-
-# Configuración por defecto para la base de datos
 DEFAULT_CONFIG = {
     'host': 'bluebyte.space',
     'port': 3306,
@@ -46,14 +29,6 @@ DEFAULT_CONFIG = {
     'charset': 'utf8mb4',
     'autocommit': True
 }
-
-# ==============================================================================
-
-# utils/__init__.py
-"""
-Utilidades para procesamiento de texto y clasificación de intenciones.
-Contiene herramientas de NLP específicas para el dominio educativo.
-"""
 
 from .text_processor import TextProcessor
 from .intent_classifier import IntentClassifier
@@ -64,30 +39,18 @@ __all__ = [
 ]
 
 __version__ = '1.0.0'
-
-# Configuración de procesamiento de texto
 TEXT_CONFIG = {
     'remove_accents': True,
     'lowercase': True,
-    'remove_punctuation': False,  # Mantener puntuación básica
+    'remove_punctuation': False,  
     'min_word_length': 2,
     'max_word_length': 50
 }
-
-# Configuración de clasificación
 CLASSIFICATION_CONFIG = {
     'confidence_threshold': 0.6,
     'max_suggestions': 5,
     'fallback_intent': 'consulta_general'
 }
-
-# ==============================================================================
-
-# training/__init__.py
-"""
-Módulo de entrenamiento para modelos de IA conversacional.
-Incluye datos de entrenamiento, métricas y funciones de evaluación.
-"""
 
 from .training_data import (
     TRAINING_DATA,
@@ -108,8 +71,6 @@ __all__ = [
 ]
 
 __version__ = '1.0.0'
-
-# Configuración de entrenamiento
 TRAINING_CONFIG = {
     'test_size': 0.2,
     'validation_size': 0.1,
@@ -119,8 +80,6 @@ TRAINING_CONFIG = {
     'max_features': 5000,
     'ngram_range': (1, 2)
 }
-
-# Métricas importantes para evaluación
 IMPORTANT_METRICS = [
     'accuracy',
     'precision',
@@ -130,31 +89,10 @@ IMPORTANT_METRICS = [
     'classification_report'
 ]
 
-# ==============================================================================
-
-# ai-backend/__init__.py (archivo principal)
-"""
-Sistema de Inteligencia Artificial Conversacional para Gestión Educativa
-
-Este sistema proporciona una interfaz de lenguaje natural para consultar
-y analizar datos académicos, con capacidades de:
-
-- Procesamiento de lenguaje natural en español
-- Generación automática de consultas SQL
-- Análisis de esquema de base de datos
-- Respuestas contextuales por rol de usuario
-- Sistema de recomendaciones inteligentes
-
-Versión: 1.0.0
-Autor: Sistema IA Educativo
-Fecha: 2024
-"""
 
 import logging
 import os
 from datetime import datetime
-
-# Configurar logging global
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -165,14 +103,10 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
-# Información del sistema
 __version__ = '1.0.0'
 __author__ = 'Sistema IA Educativo'
 __email__ = 'soporte@sistemaai.edu'
 __status__ = 'Production'
-
-# Configuración global
 SYSTEM_CONFIG = {
     'version': __version__,
     'name': 'IA Conversacional Educativa',
@@ -187,8 +121,6 @@ SYSTEM_CONFIG = {
     'cache_ttl_minutes': 5,
     'rate_limit_per_minute': 60
 }
-
-# Roles y permisos
 USER_ROLES = {
     'alumno': {
         'description': 'Estudiante del sistema educativo',
@@ -223,8 +155,6 @@ USER_ROLES = {
         'restricted_data': ['datos_personales_detallados']
     }
 }
-
-# Tipos de consultas soportadas
 SUPPORTED_QUERIES = {
     'academicas': [
         'calificaciones',
@@ -245,8 +175,6 @@ SUPPORTED_QUERIES = {
         'encuestas'
     ]
 }
-
-# Límites y restricciones
 SYSTEM_LIMITS = {
     'max_concurrent_users': 100,
     'max_query_complexity': 'MEDIA',
@@ -256,7 +184,6 @@ SYSTEM_LIMITS = {
 }
 
 def get_system_info():
-    """Obtener información completa del sistema"""
     return {
         'system': SYSTEM_CONFIG,
         'roles': USER_ROLES,
@@ -267,7 +194,6 @@ def get_system_info():
     }
 
 def validate_system_requirements():
-    """Validar que el sistema tenga todos los requisitos"""
     required_modules = [
         'flask', 'mysql.connector', 'pandas', 'sklearn',
         'numpy', 'nltk', 'flask_cors'
@@ -286,17 +212,11 @@ def validate_system_requirements():
     
     logger.info("Todos los requisitos del sistema están satisfechos")
     return True
-
-# Mensaje de inicio
 logger.info(f"Sistema {SYSTEM_CONFIG['name']} v{__version__} iniciado")
 logger.info(f"Soporte para roles: {list(USER_ROLES.keys())}")
 logger.info(f"Tipos de consulta: {list(SUPPORTED_QUERIES.keys())}")
-
-# Validar requisitos al importar
 if not validate_system_requirements():
     logger.warning("Sistema iniciado con dependencias faltantes")
-
-# Exports principales
 __all__ = [
     'SYSTEM_CONFIG',
     'USER_ROLES', 

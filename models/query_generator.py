@@ -12,7 +12,6 @@ class QueryGenerator:
         self._initialize_templates()
     
     def load_database_schema(self):
-        """Cargar esquema completo de la base de datos"""
         try:
             tables = self.db.get_all_tables()
             for table in tables:
@@ -22,8 +21,6 @@ class QueryGenerator:
                     'columns': self.db.get_table_schema(table_name),
                     'relationships': []
                 }
-            
-            # Cargar relaciones
             relationships = self.db.get_table_relationships()
             for rel in relationships:
                 table_name = rel['TABLE_NAME']
@@ -36,9 +33,7 @@ class QueryGenerator:
             logger.error(f"Error cargando esquema: {e}")
     
     def _initialize_templates(self):
-        """Inicializar templates de consultas por intención"""
         self.query_templates = {
-            # CONSULTAS ACADÉMICAS
             'calificaciones_alumno': {
                 'query': """
                 SELECT 
@@ -119,8 +114,6 @@ class QueryGenerator:
                 """,
                 'params': ['current_cycle']
             },
-            
-            # CONSULTAS DE GESTIÓN
             'grupos_profesor': {
                 'query': """
                 SELECT DISTINCT
@@ -171,8 +164,6 @@ class QueryGenerator:
                 LIMIT 20
                 """
             },
-            
-            # CONSULTAS DE ANÁLISIS
             'estadisticas_generales': {
                 'query': """
                 SELECT 
@@ -236,26 +227,18 @@ class QueryGenerator:
         }
     
     def generate_query(self, intent, entities, user_role, user_id=None, context=None):
-        """Generar consulta SQL basada en la intención y entidades"""
         try:
-            # Obtener ciclo escolar actual
             current_cycle = self._get_current_cycle()
-            
-            # Mapear intenciones a templates
             query_info = self._map_intent_to_query(intent, entities, user_role, user_id, current_cycle)
             
             if not query_info:
                 return {'query': None, 'params': None, 'description': 'No se pudo generar consulta'}
-            
-            # Procesar parámetros
             processed_params = self._process_parameters(
                 query_info.get('params', []), 
                 entities, 
                 user_id, 
                 current_cycle
             )
-            
-            # Aplicar filtros de rol si es necesario
             final_query = self._apply_role_filters(
                 query_info['query'], 
                 user_role, 
@@ -275,9 +258,6 @@ class QueryGenerator:
             return {'query': None, 'params': None, 'description': f'Error: {e}'}
     
     def _map_intent_to_query(self, intent, entities, user_role, user_id, current_cycle):
-        """Mapear intención a template de consulta"""
-        
-        # Mapeo directo de intenciones
         intent_mapping = {
             'ver_calificaciones': 'calificaciones_alumno',
             'consultar_notas': 'calificaciones_alumno',
@@ -305,19 +285,12 @@ class QueryGenerator:
             'mi_horario': 'horarios_alumno',
             'horario_clases': 'horarios_alumno'
         }
-        
-        # Buscar template
         template_key = intent_mapping.get(intent)
         if template_key and template_key in self.query_templates:
             return self.query_templates[template_key]
-        
-        # Si no hay mapeo directo, intentar generar dinámicamente
         return self._generate_dynamic_query(intent, entities, user_role)
     
     def _generate_dynamic_query(self, intent, entities, user_role):
-        """Generar consulta dinámica basada en entidades detectadas"""
-        
-        # Detectar tipo de consulta por palabras clave
         if any(word in intent.lower() for word in ['promedio', 'calificacion', 'nota']):
             if user_role == 'alumno':
                 return self.query_templates['calificaciones_alumno']
@@ -335,8 +308,6 @@ class QueryGenerator:
         
         elif any(word in intent.lower() for word in ['estadistica', 'reporte', 'analisis']):
             return self.query_templates['estadisticas_generales']
-        
-        # Consulta genérica de información
         return {
             'query': """
             SELECT 'informacion_general' as tipo,
@@ -348,7 +319,6 @@ class QueryGenerator:
         }
     
     def _process_parameters(self, param_names, entities, user_id, current_cycle):
-        """Procesar parámetros para la consulta"""
         params = []
         
         for param_name in param_names:
@@ -359,42 +329,34 @@ class QueryGenerator:
             elif param_name in entities:
                 params.append(entities[param_name])
             else:
-                # Valor por defecto
                 params.append(None)
         
         return params
     
     def _apply_role_filters(self, query, user_role, user_id, role_filters):
-        """Aplicar filtros específicos por rol"""
         if '{role_filter}' not in query:
             return query
         
         filter_clause = role_filters.get(user_role, '')
-        
-        # Reemplazar el placeholder con el filtro correspondiente
         final_query = query.replace('{role_filter}', filter_clause)
         
         return final_query
     
     def _get_current_cycle(self):
-        """Obtener ciclo escolar actual"""
         now = datetime.now()
         year = now.year
         month = now.month
         
-        if month <= 4:  # ENE-ABR
+        if month <= 4:  
             return f"{year-1}-{year}"
-        elif month <= 8:  # MAY-AGO
+        elif month <= 8:  
             return f"{year}-{year}"
-        else:  # SEP-DIC
+        else:  
             return f"{year}-{year+1}"
     
     def validate_query(self, query, params):
-        """Validar que la consulta sea segura"""
         if not query:
             return False
-        
-        # Verificar que no contenga operaciones peligrosas
         dangerous_keywords = [
             'DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 
             'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE'
@@ -409,7 +371,6 @@ class QueryGenerator:
         return True
     
     def get_query_explanation(self, template_key):
-        """Obtener explicación de lo que hace una consulta"""
         explanations = {
             'calificaciones_alumno': 'Obtiene las calificaciones de un alumno específico',
             'alumnos_en_riesgo': 'Lista alumnos que tienen reportes de riesgo activos',

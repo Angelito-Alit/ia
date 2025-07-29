@@ -18,20 +18,12 @@ class ResponseFormatter:
         }
     
     def format_response(self, intent, data, query_info, user_role, original_message):
-        """Formatear respuesta basada en la intención y datos"""
         try:
-            # Si no hay datos
             if not data:
                 return self._format_no_data_response(intent, original_message, user_role)
-            
-            # Obtener template específico
             template_key = query_info.get('template_used', intent)
             formatter = self.response_templates.get(template_key, self._format_generic_response)
-            
-            # Formatear respuesta
             formatted = formatter(data, user_role, original_message)
-            
-            # Agregar recomendaciones si aplica
             recommendations = self._generate_recommendations(template_key, data, user_role)
             formatted['recommendations'] = recommendations
             
@@ -45,17 +37,12 @@ class ResponseFormatter:
             }
     
     def _format_calificaciones(self, data, user_role, original_message):
-        """Formatear calificaciones de alumno"""
         if not data:
             return {'text': "No encontré calificaciones registradas para este período."}
-        
-        # Calcular estadísticas
         total_materias = len(data)
         promedio_general = sum([row['calificacion_final'] for row in data if row['calificacion_final']]) / len([row for row in data if row['calificacion_final']])
         materias_aprobadas = len([row for row in data if row['estatus'] == 'aprobado'])
         materias_riesgo = len([row for row in data if row['calificacion_final'] and row['calificacion_final'] < 7.0])
-        
-        # Construir respuesta
         response = f"""📊 **Resumen de Calificaciones**
         
 **Estadísticas Generales:**
@@ -81,11 +68,8 @@ class ResponseFormatter:
         return {'text': response}
     
     def _format_alumnos_riesgo(self, data, user_role, original_message):
-        """Formatear lista de alumnos en riesgo"""
         if not data:
             return {'text': "¡Excelente! No hay alumnos en situación de riesgo actualmente."}
-        
-        # Agrupar por nivel de riesgo
         riesgo_critico = [row for row in data if row['nivel_riesgo'] == 'critico']
         riesgo_alto = [row for row in data if row['nivel_riesgo'] == 'alto']
         riesgo_medio = [row for row in data if row['nivel_riesgo'] == 'medio']
@@ -94,7 +78,7 @@ class ResponseFormatter:
         
         if riesgo_critico:
             response += f"🔴 **RIESGO CRÍTICO** ({len(riesgo_critico)} alumnos)\n"
-            for row in riesgo_critico[:5]:  # Limitar a 5 para no saturar
+            for row in riesgo_critico[:5]:  
                 response += f"• **{row['nombre']} {row['apellido']}** ({row['matricula']})\n"
                 response += f"  Carrera: {row['carrera']} | Promedio: {row['promedio_general']:.2f}\n"
                 response += f"  Problema: {row['tipo_riesgo']} - {row['descripcion'][:100]}...\n\n"
@@ -111,7 +95,6 @@ class ResponseFormatter:
         return {'text': response}
     
     def _format_promedio_carrera(self, data, user_role, original_message):
-        """Formatear promedios por carrera"""
         if not data:
             return {'text': "No se encontraron datos de carreras con alumnos activos."}
         
@@ -129,7 +112,6 @@ class ResponseFormatter:
         return {'text': response}
     
     def _format_materias_reprobadas(self, data, user_role, original_message):
-        """Formatear materias con más reprobados"""
         if not data:
             return {'text': "No hay materias con índices significativos de reprobación este período."}
         
@@ -143,11 +125,8 @@ class ResponseFormatter:
         return {'text': response}
     
     def _format_grupos_profesor(self, data, user_role, original_message):
-        """Formatear grupos asignados a profesor"""
         if not data:
             return {'text': "No tienes grupos asignados actualmente."}
-        
-        # Agrupar por carrera
         carreras = {}
         for row in data:
             carrera = row['carrera']
@@ -167,11 +146,8 @@ class ResponseFormatter:
         return {'text': response}
     
     def _format_solicitudes_ayuda(self, data, user_role, original_message):
-        """Formatear solicitudes de ayuda pendientes"""
         if not data:
             return {'text': "¡Perfecto! No hay solicitudes de ayuda pendientes."}
-        
-        # Agrupar por urgencia
         alta_urgencia = [row for row in data if row['urgencia'] == 'alta']
         media_urgencia = [row for row in data if row['urgencia'] == 'media']
         baja_urgencia = [row for row in data if row['urgencia'] == 'baja']
@@ -185,86 +161,63 @@ class ResponseFormatter:
                 response += f"• **{row['nombre']} {row['apellido']}** ({row['matricula']})\n"
                 response += f"  Problema: {row['tipo_problema']}\n"
                 response += f"  Esperando: {days_waiting} días\n"
-                response += f"  📝 {row['descripcion_problema'][:80]}...\n\n"
+                response += f"   {row['descripcion_problema'][:80]}...\n\n"
         
         if media_urgencia:
-            response += f"🟡 **URGENCIA MEDIA**: {len(media_urgencia)} solicitudes\n\n"
+            response += f" **URGENCIA MEDIA**: {len(media_urgencia)} solicitudes\n\n"
         
         if baja_urgencia:
-            response += f"🟢 **URGENCIA BAJA**: {len(baja_urgencia)} solicitudes\n\n"
+            response += f" **URGENCIA BAJA**: {len(baja_urgencia)} solicitudes\n\n"
         
         return {'text': response}
     
     def _format_estadisticas(self, data, user_role, original_message):
-        """Formatear estadísticas generales"""
         if not data:
             return {'text': "No se pudieron obtener las estadísticas del sistema."}
         
-        response = "📊 **Estadísticas del Sistema**\n\n"
+        response = " **Estadísticas del Sistema**\n\n"
         
         for row in data:
             concepto = row['concepto']
             valor = row['valor']
             
-            # Agregar emoji según el concepto
-            if 'Alumnos' in concepto and 'Riesgo' not in concepto:
-                emoji = "👨‍🎓"
-            elif 'Riesgo' in concepto:
-                emoji = "⚠️"
-            elif 'Reportes' in concepto:
-                emoji = "📋"
-            elif 'Solicitudes' in concepto:
-                emoji = "🆘"
-            else:
-                emoji = "📊"
-            
-            response += f"{emoji} **{concepto}**: {valor}\n"
+            response += f" **{concepto}**: {valor}\n"
         
         return {'text': response}
     
     def _format_horarios(self, data, user_role, original_message):
-        """Formatear horario de alumno"""
         if not data:
             return {'text': "No tienes horario registrado o no hay clases programadas."}
-        
-        # Agrupar por día
         dias = {}
         for row in data:
             dia = row['dia_semana']
             if dia not in dias:
                 dias[dia] = []
             dias[dia].append(row)
-        
-        # Orden de días
         orden_dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
         
-        response = "📅 **Tu Horario de Clases**\n\n"
+        response = " **Tu Horario de Clases**\n\n"
         
         for dia in orden_dias:
             if dia in dias:
                 response += f"**{dia.capitalize()}**\n"
-                # Ordenar por hora
                 clases_dia = sorted(dias[dia], key=lambda x: x['hora_inicio'])
                 
                 for clase in clases_dia:
-                    tipo_emoji = "📖" if clase['tipo_clase'] == 'teorica' else "🔬" if clase['tipo_clase'] == 'laboratorio' else "💻"
+                    tipo_emoji = "" if clase['tipo_clase'] == 'teorica' else "" if clase['tipo_clase'] == 'laboratorio' else ""
                     response += f"{tipo_emoji} {clase['hora_inicio']} - {clase['hora_fin']} | **{clase['materia']}**\n"
-                    response += f"   📍 {clase['aula']} | 👨‍🏫 {clase['profesor']}\n"
+                    response += f"    {clase['aula']} |  {clase['profesor']}\n"
                     response += f"   Tipo: {clase['tipo_clase']}\n\n"
         
         return {'text': response}
     
     def _format_generic_response(self, data, user_role, original_message):
-        """Formatear respuesta genérica"""
         if isinstance(data, list) and len(data) > 0:
             response = f"He encontrado {len(data)} resultados para tu consulta:\n\n"
-            
-            # Mostrar primeros resultados
             for i, row in enumerate(data[:5], 1):
                 response += f"**{i}.** "
-                # Intentar mostrar campos relevantes
                 if isinstance(row, dict):
-                    for key, value in list(row.items())[:3]:  # Primeros 3 campos
+                    for key, value in list(row.items())[:3]:  
                         if value is not None:
                             response += f"{key}: {value} | "
                     response = response.rstrip(" | ") + "\n"
@@ -279,7 +232,6 @@ class ResponseFormatter:
             return {'text': "He procesado tu consulta pero no encontré resultados específicos."}
     
     def _format_no_data_response(self, intent, original_message, user_role):
-        """Formatear respuesta cuando no hay datos"""
         responses = {
             'calificaciones_alumno': "No encontré calificaciones registradas. Puede que aún no estén capturadas o no tengas materias asignadas este período.",
             'alumnos_en_riesgo': "¡Excelente noticia! No hay alumnos reportados en situación de riesgo actualmente.",
@@ -295,7 +247,6 @@ class ResponseFormatter:
         }
     
     def _generate_recommendations(self, template_key, data, user_role):
-        """Generar recomendaciones basadas en los datos"""
         recommendations = []
         
         if template_key == 'alumnos_en_riesgo' and data:

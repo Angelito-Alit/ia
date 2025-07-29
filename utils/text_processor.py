@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 
 class TextProcessor:
     def __init__(self):
-        # Patrones de expresiones regulares
         self.patterns = {
             'matricula': r'\b\d{8,12}\b',
             'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
@@ -17,8 +16,6 @@ class TextProcessor:
             'codigo_materia': r'\b[A-Z]{2,4}[-]?\d{2,4}\b',
             'porcentaje': r'\b\d+\.?\d*%\b'
         }
-        
-        # Sinónimos y términos equivalentes
         self.synonyms = {
             'calificaciones': ['notas', 'puntuaciones', 'evaluaciones', 'resultados', 'scores'],
             'alumnos': ['estudiantes', 'muchachos', 'chavos', 'personas', 'gente'],
@@ -32,11 +29,7 @@ class TextProcessor:
             'cuatrimestre': ['período', 'semestre', 'trimestre', 'ciclo'],
             'reprobado': ['reprobados', 'fallidos', 'no aprobados', 'suspendidos']
         }
-        
-        # Palabras de negación
         self.negation_words = ['no', 'sin', 'nunca', 'jamás', 'nada', 'ninguno', 'ninguna', 'tampoco']
-        
-        # Stop words en español
         self.stop_words = {
             'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 'lo', 
             'le', 'da', 'su', 'por', 'son', 'con', 'para', 'al', 'del', 'los', 'las',
@@ -46,61 +39,36 @@ class TextProcessor:
         }
     
     def process(self, text):
-        """Procesar texto principal"""
         if not text:
             return ""
-        
-        # Normalizar texto
         normalized = self._normalize_text(text)
-        
-        # Expandir sinónimos
         expanded = self._expand_synonyms(normalized)
-        
-        # Limpiar texto
         cleaned = self._clean_text(expanded)
         
         return cleaned
     
     def extract_entities(self, text):
-        """Extraer entidades del texto"""
         entities = {}
-        
-        # Extraer usando patrones
         for entity_type, pattern in self.patterns.items():
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
                 entities[entity_type] = matches
-        
-        # Extraer entidades específicas del dominio educativo
         entities.update(self._extract_educational_entities(text))
-        
-        # Extraer fechas relativas
         entities.update(self._extract_relative_dates(text))
-        
-        # Extraer nombres propios
         entities.update(self._extract_proper_names(text))
         
         return entities
     
     def _normalize_text(self, text):
-        """Normalizar texto"""
-        # Convertir a minúsculas
         text = text.lower()
-        
-        # Remover acentos pero mantener ñ
         text = unicodedata.normalize('NFD', text)
         text = ''.join(c for c in text if unicodedata.category(c) != 'Mn' or c in 'ñÑ')
-        
-        # Normalizar espacios
         text = re.sub(r'\s+', ' ', text)
-        
-        # Remover caracteres especiales pero mantener puntuación básica
         text = re.sub(r'[^\w\s\.\?\!\,\-\%\@]', '', text)
         
         return text.strip()
     
     def _expand_synonyms(self, text):
-        """Expandir sinónimos en el texto"""
         words = text.split()
         expanded_words = []
         
@@ -118,8 +86,6 @@ class TextProcessor:
         return ' '.join(expanded_words)
     
     def _clean_text(self, text):
-        """Limpiar texto final"""
-        # Remover stop words excesivas pero mantener algunas importantes
         words = text.split()
         important_words = []
         
@@ -130,10 +96,7 @@ class TextProcessor:
         return ' '.join(important_words)
     
     def _extract_educational_entities(self, text):
-        """Extraer entidades específicas del dominio educativo"""
         entities = {}
-        
-        # Carreras comunes
         carreras_patterns = {
             'sistemas': r'\b(sistemas|computacion|informatica|software)\b',
             'industrial': r'\b(industrial|manufactura|produccion)\b',
@@ -147,8 +110,6 @@ class TextProcessor:
                 if 'carrera' not in entities:
                     entities['carrera'] = []
                 entities['carrera'].append(carrera)
-        
-        # Períodos académicos
         periodos_patterns = {
             'ENE-ABR': r'\b(enero|febrero|marzo|abril|ene-abr|primer.*cuatrimestre)\b',
             'MAY-AGO': r'\b(mayo|junio|julio|agosto|may-ago|segundo.*cuatrimestre)\b',
@@ -159,13 +120,9 @@ class TextProcessor:
             if re.search(pattern, text, re.IGNORECASE):
                 entities['periodo'] = periodo
                 break
-        
-        # Cuatrimestres
         cuatrimestre_match = re.search(r'\b(\d+)[°º]?\s*(cuatrimestre|semestre|año)\b', text, re.IGNORECASE)
         if cuatrimestre_match:
             entities['cuatrimestre'] = int(cuatrimestre_match.group(1))
-        
-        # Tipos de riesgo
         riesgo_patterns = {
             'academico': r'\b(academico|calificaciones|notas|estudio)\b',
             'asistencia': r'\b(asistencia|faltas|inasistencia|ausentismo)\b',
@@ -183,10 +140,7 @@ class TextProcessor:
         return entities
     
     def _extract_relative_dates(self, text):
-        """Extraer fechas relativas"""
         entities = {}
-        
-        # Fechas relativas
         relative_patterns = {
             'hoy': r'\b(hoy|ahora|actual|presente)\b',
             'ayer': r'\b(ayer|anterior)\b',
@@ -205,15 +159,11 @@ class TextProcessor:
         return entities
     
     def _extract_proper_names(self, text):
-        """Extraer nombres propios (básico)"""
         entities = {}
-        
-        # Buscar patrones de nombres (Mayúscula seguida de minúsculas)
         name_pattern = r'\b[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*\b'
         matches = re.findall(name_pattern, text)
         
         if matches:
-            # Filtrar nombres comunes que no son nombres de personas
             common_words = {'Sistemas', 'Industrial', 'Administracion', 'Universidad', 'Instituto'}
             names = [match for match in matches if match not in common_words and len(match.split()) <= 3]
             
@@ -223,7 +173,6 @@ class TextProcessor:
         return entities
     
     def detect_intent_keywords(self, text):
-        """Detectar palabras clave que indican intención"""
         intent_keywords = {
             'consulta': ['ver', 'mostrar', 'consultar', 'revisar', 'checar', 'buscar'],
             'analisis': ['analizar', 'analisis', 'reporte', 'estadisticas', 'resumen'],
@@ -247,7 +196,6 @@ class TextProcessor:
         return detected_intents
     
     def extract_question_type(self, text):
-        """Detectar tipo de pregunta"""
         question_patterns = {
             'que': r'\b(que|qué)\b',
             'como': r'\b(como|cómo)\b',
@@ -263,27 +211,21 @@ class TextProcessor:
             if re.search(pattern, text, re.IGNORECASE):
                 return q_type
         
-        return 'statement'  # No es pregunta, es declaración
+        return 'statement' 
     
     def has_negation(self, text):
-        """Detectar si el texto contiene negación"""
         for neg_word in self.negation_words:
             if re.search(r'\b' + neg_word + r'\b', text, re.IGNORECASE):
                 return True
         return False
     
     def extract_numbers_and_ranges(self, text):
-        """Extraer números y rangos del texto"""
         entities = {}
-        
-        # Rangos
         range_pattern = r'\b(\d+(?:\.\d+)?)\s*(?:a|hasta|entre)\s*(\d+(?:\.\d+)?)\b'
         range_matches = re.findall(range_pattern, text, re.IGNORECASE)
         
         if range_matches:
             entities['rangos'] = [(float(start), float(end)) for start, end in range_matches]
-        
-        # Números individuales
         number_pattern = r'\b\d+(?:\.\d+)?\b'
         numbers = re.findall(number_pattern, text)
         
@@ -293,31 +235,22 @@ class TextProcessor:
         return entities
     
     def clean_for_sql(self, text):
-        """Limpiar texto para uso seguro en SQL"""
-        # Remover caracteres peligrosos para SQL
         dangerous_chars = ["'", '"', ';', '--', '/*', '*/', 'xp_', 'sp_']
         
         cleaned = text
         for char in dangerous_chars:
             cleaned = cleaned.replace(char, '')
-        
-        # Limitar longitud
         cleaned = cleaned[:500]
         
         return cleaned.strip()
     
     def tokenize(self, text):
-        """Tokenizar texto en palabras"""
-        # Separar por espacios y puntuación
         tokens = re.findall(r'\b\w+\b', text.lower())
-        
-        # Filtrar tokens muy cortos
         tokens = [token for token in tokens if len(token) > 2]
         
         return tokens
     
     def get_text_similarity(self, text1, text2):
-        """Calcular similitud básica entre textos"""
         tokens1 = set(self.tokenize(text1))
         tokens2 = set(self.tokenize(text2))
         

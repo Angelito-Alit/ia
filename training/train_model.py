@@ -6,8 +6,6 @@ from datetime import datetime
 from typing import List, Dict, Any, Tuple
 import numpy as np
 import pandas as pd
-
-# Importaciones para ML
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC
@@ -16,8 +14,6 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
-
-# Importaciones locales
 from training_data import TRAINING_DATA, get_all_training_data, validate_training_data
 from utils.text_processor import TextProcessor
 
@@ -27,58 +23,40 @@ class AIModelTrainer:
     def __init__(self, model_path: str = "models/"):
         self.model_path = model_path
         self.text_processor = TextProcessor()
-        
-        # Modelos disponibles
         self.models = {
             'naive_bayes': MultinomialNB(),
             'svm': SVC(kernel='linear', probability=True),
             'random_forest': RandomForestClassifier(n_estimators=100, random_state=42)
         }
-        
-        # Componentes entrenados
         self.intent_classifier = None
         self.vectorizer = None
         self.label_encoder = None
         self.trained_models = {}
         self.training_metrics = {}
-        
-        # Configuración
         self.config = {
             'test_size': 0.2,
             'random_state': 42,
             'cv_folds': 5,
             'min_samples_per_intent': 3
         }
-        
-        # Crear directorio de modelos si no existe
         os.makedirs(model_path, exist_ok=True)
     
     def prepare_training_data(self) -> Tuple[List[str], List[str]]:
-        """Preparar datos de entrenamiento"""
         logger.info("Preparando datos de entrenamiento...")
-        
-        # Validar datos
         validation_issues = validate_training_data()
         if validation_issues:
             logger.warning(f"Problemas en datos de entrenamiento: {validation_issues}")
-        
-        # Obtener todos los datos
         training_data = get_all_training_data()
         
         texts = []
         labels = []
         
         for item in training_data:
-            # Procesar texto
             processed_text = self.text_processor.process(item['text'])
             texts.append(processed_text)
             labels.append(item['intent'])
-        
-        # Verificar balance de clases
         intent_counts = pd.Series(labels).value_counts()
         logger.info(f"Distribución de intenciones:\n{intent_counts}")
-        
-        # Filtrar intenciones con muy pocos ejemplos
         min_samples = self.config['min_samples_per_intent']
         valid_intents = intent_counts[intent_counts >= min_samples].index
         
@@ -95,44 +73,29 @@ class AIModelTrainer:
         return filtered_texts, filtered_labels
     
     def train_intent_classifier(self, model_type: str = 'naive_bayes') -> Dict[str, Any]:
-        """Entrenar clasificador de intenciones"""
         logger.info(f"Entrenando clasificador de intenciones con {model_type}...")
-        
-        # Preparar datos
         texts, labels = self.prepare_training_data()
-        
-        # Dividir datos
         X_train, X_test, y_train, y_test = train_test_split(
             texts, labels, 
             test_size=self.config['test_size'],
             random_state=self.config['random_state'],
             stratify=labels
         )
-        
-        # Crear pipeline
         pipeline = Pipeline([
             ('tfidf', TfidfVectorizer(
                 max_features=5000,
                 ngram_range=(1, 2),
-                stop_words=None,  # Ya procesamos el texto
+                stop_words=None,  
                 lowercase=True,
                 min_df=2,
                 max_df=0.8
             )),
             ('classifier', self.models[model_type])
         ])
-        
-        # Entrenar modelo
         pipeline.fit(X_train, y_train)
-        
-        # Evaluar modelo
         y_pred = pipeline.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
-        
-        # Validación cruzada
         cv_scores = cross_val_score(pipeline, texts, labels, cv=self.config['cv_folds'])
-        
-        # Métricas detalladas
         metrics = {
             'model_type': model_type,
             'accuracy': accuracy,
@@ -146,8 +109,6 @@ class AIModelTrainer:
             'feature_count': pipeline.named_steps['tfidf'].get_feature_names_out().shape[0],
             'timestamp': datetime.now().isoformat()
         }
-        
-        # Guardar modelo entrenado
         self.intent_classifier = pipeline
         self.training_metrics[model_type] = metrics
         
@@ -156,7 +117,6 @@ class AIModelTrainer:
         return metrics
     
     def train_all_models(self) -> Dict[str, Dict[str, Any]]:
-        """Entrenar todos los modelos disponibles"""
         logger.info("Entrenando todos los modelos...")
         
         all_metrics = {}
@@ -165,8 +125,6 @@ class AIModelTrainer:
             try:
                 metrics = self.train_intent_classifier(model_name)
                 all_metrics[model_name] = metrics
-                
-                # Guardar modelo si es el mejor hasta ahora
                 if not self.intent_classifier or metrics['accuracy'] > max(
                     m.get('accuracy', 0) for m in all_metrics.values() if m != metrics
                 ):
@@ -177,21 +135,16 @@ class AIModelTrainer:
             except Exception as e:
                 logger.error(f"Error entrenando modelo {model_name}: {e}")
                 all_metrics[model_name] = {'error': str(e)}
-        
-        # Seleccionar mejor modelo
         best_model = max(all_metrics.keys(), key=lambda k: all_metrics[k].get('accuracy', 0))
         logger.info(f"Mejor modelo: {best_model} con accuracy {all_metrics[best_model]['accuracy']:.3f}")
         
         return all_metrics
     
     def augment_training_data(self, texts: List[str], labels: List[str]) -> Tuple[List[str], List[str]]:
-        """Aumentar datos de entrenamiento con variaciones"""
         logger.info("Aumentando datos de entrenamiento...")
         
         augmented_texts = texts.copy()
         augmented_labels = labels.copy()
-        
-        # Técnicas de aumento de datos
         augmentation_techniques = [
             self._add_noise,
             self._synonym_replacement,
@@ -200,9 +153,8 @@ class AIModelTrainer:
         ]
         
         for i, (text, label) in enumerate(zip(texts, labels)):
-            # Aplicar técnicas de aumento aleatoriamente
             for technique in augmentation_techniques:
-                if np.random.random() < 0.3:  # 30% probabilidad
+                if np.random.random() < 0.3:  
                     try:
                         augmented_text = technique(text)
                         if augmented_text and augmented_text != text:
@@ -216,10 +168,7 @@ class AIModelTrainer:
         return augmented_texts, augmented_labels
     
     def _add_noise(self, text: str) -> str:
-        """Agregar ruido al texto"""
         words = text.split()
-        
-        # Cambiar orden de algunas palabras (10% probabilidad)
         if len(words) > 3 and np.random.random() < 0.1:
             i, j = np.random.choice(len(words), 2, replace=False)
             words[i], words[j] = words[j], words[i]
@@ -227,8 +176,6 @@ class AIModelTrainer:
         return ' '.join(words)
     
     def _synonym_replacement(self, text: str) -> str:
-        """Reemplazar palabras con sinónimos"""
-        # Sinónimos básicos para el dominio educativo
         synonyms = {
             'calificaciones': ['notas', 'puntuaciones', 'resultados'],
             'alumnos': ['estudiantes', 'muchachos'],
@@ -242,32 +189,29 @@ class AIModelTrainer:
         
         words = text.split()
         for i, word in enumerate(words):
-            if word.lower() in synonyms and np.random.random() < 0.2:  # 20% probabilidad
+            if word.lower() in synonyms and np.random.random() < 0.2:  
                 words[i] = np.random.choice(synonyms[word.lower()])
         
         return ' '.join(words)
     
     def _sentence_shuffle(self, text: str) -> str:
-        """Reorganizar orden de frases"""
         sentences = text.split('.')
         if len(sentences) > 2:
-            np.random.shuffle(sentences[:-1])  # No mezclar el último elemento vacío
+            np.random.shuffle(sentences[:-1])  
             return '.'.join(sentences)
         return text
     
     def _add_punctuation_variation(self, text: str) -> str:
-        """Variar puntuación"""
         variations = [
             text.replace('?', ''),
             text.replace('.', ''),
             text + '?',
-            text.replace(' ', '  ')  # Espacios extra
+            text.replace(' ', '  ')  
         ]
         
         return np.random.choice(variations)
     
     def evaluate_model_performance(self, model_name: str = None) -> Dict[str, Any]:
-        """Evaluar rendimiento detallado del modelo"""
         if model_name and model_name in self.trained_models:
             model = self.trained_models[model_name]
         else:
@@ -275,15 +219,9 @@ class AIModelTrainer:
         
         if not model:
             raise ValueError("No hay modelo entrenado para evaluar")
-        
-        # Preparar datos de test
         texts, labels = self.prepare_training_data()
-        
-        # Predicciones
         predictions = model.predict(texts)
         probabilities = model.predict_proba(texts)
-        
-        # Análisis por intención
         intent_analysis = {}
         unique_labels = sorted(set(labels))
         
@@ -291,8 +229,6 @@ class AIModelTrainer:
             intent_mask = np.array(labels) == intent
             intent_predictions = np.array(predictions)[intent_mask]
             intent_accuracy = (intent_predictions == intent).mean()
-            
-            # Confianza promedio para esta intención
             intent_indices = [i for i, label in enumerate(labels) if label == intent]
             intent_confidences = [probabilities[i].max() for i in intent_indices]
             
@@ -303,8 +239,6 @@ class AIModelTrainer:
                 'min_confidence': np.min(intent_confidences),
                 'max_confidence': np.max(intent_confidences)
             }
-        
-        # Análisis de errores
         error_analysis = []
         for i, (true_label, pred_label) in enumerate(zip(labels, predictions)):
             if true_label != pred_label:
@@ -318,7 +252,7 @@ class AIModelTrainer:
         return {
             'overall_accuracy': accuracy_score(labels, predictions),
             'intent_analysis': intent_analysis,
-            'error_analysis': error_analysis[:10],  # Primeros 10 errores
+            'error_analysis': error_analysis[:10], 
             'total_errors': len(error_analysis),
             'model_info': {
                 'type': type(model).__name__,
@@ -327,30 +261,24 @@ class AIModelTrainer:
         }
     
     def save_models(self, filename_prefix: str = "ai_model") -> Dict[str, str]:
-        """Guardar modelos entrenados"""
         logger.info("Guardando modelos entrenados...")
         
         saved_files = {}
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         try:
-            # Guardar modelo principal
             if self.intent_classifier:
                 model_file = f"{self.model_path}/{filename_prefix}_{timestamp}.pkl"
                 with open(model_file, 'wb') as f:
                     pickle.dump(self.intent_classifier, f)
                 saved_files['intent_classifier'] = model_file
                 logger.info(f"Modelo principal guardado en: {model_file}")
-            
-            # Guardar métricas
             if self.training_metrics:
                 metrics_file = f"{self.model_path}/{filename_prefix}_metrics_{timestamp}.json"
                 with open(metrics_file, 'w', encoding='utf-8') as f:
                     json.dump(self.training_metrics, f, indent=2, ensure_ascii=False)
                 saved_files['metrics'] = metrics_file
                 logger.info(f"Métricas guardadas en: {metrics_file}")
-            
-            # Guardar configuración
             config_file = f"{self.model_path}/{filename_prefix}_config_{timestamp}.json"
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump({
@@ -360,8 +288,6 @@ class AIModelTrainer:
                     'intent_count': len(TRAINING_DATA)
                 }, f, indent=2, ensure_ascii=False)
             saved_files['config'] = config_file
-            
-            # Crear archivo de metadatos
             metadata_file = f"{self.model_path}/latest_model.json"
             with open(metadata_file, 'w', encoding='utf-8') as f:
                 json.dump({
@@ -379,17 +305,14 @@ class AIModelTrainer:
         return saved_files
     
     def load_model(self, model_file: str = None) -> bool:
-        """Cargar modelo entrenado"""
         try:
             if not model_file:
-                # Buscar el modelo más reciente
                 metadata_file = f"{self.model_path}/latest_model.json"
                 if os.path.exists(metadata_file):
                     with open(metadata_file, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
                         model_file = metadata.get('latest_model')
                 else:
-                    # Buscar archivos .pkl en el directorio
                     pkl_files = [f for f in os.listdir(self.model_path) if f.endswith('.pkl')]
                     if pkl_files:
                         model_file = f"{self.model_path}/{sorted(pkl_files)[-1]}"
@@ -409,7 +332,6 @@ class AIModelTrainer:
             return False
     
     def test_model_real_time(self, test_phrases: List[str] = None) -> Dict[str, Any]:
-        """Probar modelo con frases en tiempo real"""
         if not self.intent_classifier:
             raise ValueError("No hay modelo cargado")
         
@@ -426,14 +348,9 @@ class AIModelTrainer:
         results = []
         
         for phrase in test_phrases:
-            # Procesar texto
             processed = self.text_processor.process(phrase)
-            
-            # Predecir
             prediction = self.intent_classifier.predict([processed])[0]
             probabilities = self.intent_classifier.predict_proba([processed])[0]
-            
-            # Obtener top 3 predicciones
             top_indices = np.argsort(probabilities)[-3:][::-1]
             classes = self.intent_classifier.classes_
             
@@ -463,14 +380,11 @@ class AIModelTrainer:
         }
     
     def generate_training_report(self) -> str:
-        """Generar reporte completo del entrenamiento"""
         if not self.training_metrics:
             return "No hay métricas de entrenamiento disponibles"
         
         report = "# Reporte de Entrenamiento - IA Conversacional\n\n"
         report += f"**Fecha:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        
-        # Resumen general
         best_model = max(self.training_metrics.keys(), 
                         key=lambda k: self.training_metrics[k].get('accuracy', 0))
         best_accuracy = self.training_metrics[best_model]['accuracy']
@@ -480,8 +394,6 @@ class AIModelTrainer:
         report += f"- **Mejor accuracy:** {best_accuracy:.3f}\n"
         report += f"- **Intenciones entrenadas:** {self.training_metrics[best_model]['unique_intents']}\n"
         report += f"- **Muestras de entrenamiento:** {self.training_metrics[best_model]['training_samples']}\n\n"
-        
-        # Detalles por modelo
         report += "## Detalles por Modelo\n\n"
         for model_name, metrics in self.training_metrics.items():
             if 'error' in metrics:
@@ -493,8 +405,6 @@ class AIModelTrainer:
             report += f"- **Accuracy:** {metrics['accuracy']:.3f}\n"
             report += f"- **CV Score:** {metrics['cv_mean']:.3f} ± {metrics['cv_std']:.3f}\n"
             report += f"- **Features:** {metrics['feature_count']}\n"
-            
-            # Top intenciones por F1-score
             if 'classification_report' in metrics:
                 class_report = metrics['classification_report']
                 intent_scores = [(intent, scores['f1-score']) 
@@ -507,8 +417,6 @@ class AIModelTrainer:
                     report += f"  - {intent}: {f1:.3f}\n"
             
             report += "\n"
-        
-        # Recomendaciones
         report += "## Recomendaciones\n\n"
         if best_accuracy < 0.85:
             report += "- ⚠️ **Accuracy baja:** Considerar agregar más datos de entrenamiento\n"
@@ -525,7 +433,6 @@ class AIModelTrainer:
         return report
     
     def compare_models(self) -> pd.DataFrame:
-        """Comparar rendimiento de todos los modelos entrenados"""
         if not self.training_metrics:
             return pd.DataFrame()
         
@@ -547,28 +454,20 @@ class AIModelTrainer:
         return df.sort_values('Accuracy', ascending=False)
     
     def get_feature_importance(self, top_n: int = 20) -> Dict[str, float]:
-        """Obtener importancia de características"""
         if not self.intent_classifier or not hasattr(self.intent_classifier, 'named_steps'):
             return {}
         
         try:
-            # Para modelos lineales, usar coeficientes
             if hasattr(self.intent_classifier.named_steps['classifier'], 'coef_'):
                 feature_names = self.intent_classifier.named_steps['tfidf'].get_feature_names_out()
                 coef = self.intent_classifier.named_steps['classifier'].coef_
-                
-                # Promedio de importancia absoluta across classes
                 importance = np.mean(np.abs(coef), axis=0)
-                
-                # Top features
                 top_indices = np.argsort(importance)[-top_n:][::-1]
                 
                 return {
                     feature_names[i]: float(importance[i])
                     for i in top_indices
                 }
-            
-            # Para Random Forest
             elif hasattr(self.intent_classifier.named_steps['classifier'], 'feature_importances_'):
                 feature_names = self.intent_classifier.named_steps['tfidf'].get_feature_names_out()
                 importance = self.intent_classifier.named_steps['classifier'].feature_importances_
@@ -584,31 +483,14 @@ class AIModelTrainer:
             logger.warning(f"No se pudo obtener importancia de características: {e}")
         
         return {}
-
-# Función principal para entrenamiento
 def main():
-    """Función principal para entrenar modelos"""
     logger.info("Iniciando entrenamiento de modelos de IA...")
-    
-    # Crear trainer
     trainer = AIModelTrainer()
-    
-    # Entrenar todos los modelos
     metrics = trainer.train_all_models()
-    
-    # Evaluar mejor modelo
     evaluation = trainer.evaluate_model_performance()
-    
-    # Probar en tiempo real
     real_time_test = trainer.test_model_real_time()
-    
-    # Guardar modelos
     saved_files = trainer.save_models()
-    
-    # Generar reporte
     report = trainer.generate_training_report()
-    
-    # Mostrar resultados
     print("\n" + "="*50)
     print("ENTRENAMIENTO COMPLETADO")
     print("="*50)
@@ -620,11 +502,8 @@ def main():
     return trainer
 
 if __name__ == "__main__":
-    # Configurar logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    
-    # Ejecutar entrenamiento
     trained_model = main()

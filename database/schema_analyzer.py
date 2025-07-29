@@ -14,21 +14,15 @@ class SchemaAnalyzer:
         self.entity_mappings = {}
         
     def analyze_complete_schema(self) -> Dict[str, Any]:
-        """Analizar completamente el esquema de la base de datos"""
         logger.info("Iniciando análisis completo del esquema")
         
         try:
-            # Obtener información básica
             tables_info = self._get_tables_info()
             columns_info = self._get_columns_info()
             relationships = self._get_relationships()
             indexes = self._get_indexes_info()
-            
-            # Analizar patrones y entidades
             entity_analysis = self._analyze_entities(tables_info, columns_info)
             relationship_graph = self._build_relationship_graph(relationships)
-            
-            # Generar mapeos para IA
             ai_mappings = self._generate_ai_mappings(tables_info, columns_info, relationships)
             
             schema_analysis = {
@@ -55,7 +49,6 @@ class SchemaAnalyzer:
             raise
     
     def _get_database_info(self) -> Dict[str, Any]:
-        """Obtener información general de la base de datos"""
         queries = {
             'version': "SELECT VERSION() as mysql_version",
             'charset': "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = DATABASE()",
@@ -80,7 +73,6 @@ class SchemaAnalyzer:
         return db_info
     
     def _get_tables_info(self) -> Dict[str, Dict]:
-        """Obtener información detallada de todas las tablas"""
         query = """
             SELECT 
                 TABLE_NAME,
@@ -119,7 +111,6 @@ class SchemaAnalyzer:
         return tables_info
     
     def _get_columns_info(self) -> Dict[str, List[Dict]]:
-        """Obtener información detallada de todas las columnas"""
         query = """
             SELECT 
                 TABLE_NAME,
@@ -170,7 +161,6 @@ class SchemaAnalyzer:
         return columns_info
     
     def _get_relationships(self) -> List[Dict]:
-        """Obtener relaciones entre tablas (foreign keys)"""
         query = """
             SELECT 
                 kcu.CONSTRAINT_NAME,
@@ -208,7 +198,6 @@ class SchemaAnalyzer:
         return relationships
     
     def _get_indexes_info(self) -> Dict[str, List[Dict]]:
-        """Obtener información de índices"""
         query = """
             SELECT 
                 TABLE_NAME,
@@ -230,8 +219,6 @@ class SchemaAnalyzer:
             table_name = idx['TABLE_NAME']
             if table_name not in indexes_info:
                 indexes_info[table_name] = []
-            
-            # Buscar si ya existe el índice
             existing_index = None
             for existing in indexes_info[table_name]:
                 if existing['name'] == idx['INDEX_NAME']:
@@ -259,7 +246,6 @@ class SchemaAnalyzer:
         return indexes_info
     
     def _analyze_entities(self, tables_info: Dict, columns_info: Dict) -> Dict[str, Any]:
-        """Analizar entidades del dominio de negocio"""
         entities = {
             'core_entities': [],
             'lookup_tables': [],
@@ -270,7 +256,6 @@ class SchemaAnalyzer:
         }
         
         for table_name, table_info in tables_info.items():
-            # Clasificar tipo de entidad
             if self._is_core_entity(table_name, columns_info.get(table_name, [])):
                 entities['core_entities'].append({
                     'table': table_name,
@@ -291,22 +276,17 @@ class SchemaAnalyzer:
                     'table': table_name,
                     'connects': self._get_connected_entities(table_name, columns_info.get(table_name, []))
                 })
-        
-        # Detectar procesos de negocio
         entities['business_processes'] = self._detect_business_processes(tables_info, columns_info)
         
         return entities
     
     def _build_relationship_graph(self, relationships: List[Dict]) -> Dict[str, Any]:
-        """Construir grafo de relaciones"""
         graph = {
             'nodes': set(),
             'edges': [],
             'clusters': [],
             'critical_paths': []
         }
-        
-        # Agregar nodos y aristas
         for rel in relationships:
             graph['nodes'].add(rel['source_table'])
             graph['nodes'].add(rel['target_table'])
@@ -319,17 +299,12 @@ class SchemaAnalyzer:
             })
         
         graph['nodes'] = list(graph['nodes'])
-        
-        # Detectar clusters (grupos de tablas relacionadas)
         graph['clusters'] = self._detect_table_clusters(graph['nodes'], graph['edges'])
-        
-        # Encontrar rutas críticas
         graph['critical_paths'] = self._find_critical_paths(graph['nodes'], graph['edges'])
         
         return graph
     
     def _generate_ai_mappings(self, tables_info: Dict, columns_info: Dict, relationships: List[Dict]) -> Dict[str, Any]:
-        """Generar mapeos para uso de la IA"""
         mappings = {
             'intent_to_tables': {},
             'entity_synonyms': {},
@@ -337,8 +312,6 @@ class SchemaAnalyzer:
             'common_queries': {},
             'business_rules': []
         }
-        
-        # Mapear intenciones a tablas relevantes
         mappings['intent_to_tables'] = {
             'calificaciones': ['calificaciones', 'asignaturas', 'alumnos'],
             'alumnos_riesgo': ['reportes_riesgo', 'alumnos', 'usuarios'],
@@ -350,8 +323,6 @@ class SchemaAnalyzer:
             'noticias': ['noticias', 'categorias_noticias', 'directivos'],
             'foro': ['foro_posts', 'foro_comentarios', 'categorias_foro']
         }
-        
-        # Sinónimos de entidades
         mappings['entity_synonyms'] = {
             'estudiante': ['alumno', 'estudiante', 'muchacho', 'chavo'],
             'profesor': ['profesor', 'maestro', 'docente', 'instructor'],
@@ -360,8 +331,6 @@ class SchemaAnalyzer:
             'grupo': ['grupo', 'clase', 'seccion'],
             'carrera': ['carrera', 'licenciatura', 'ingenieria', 'programa']
         }
-        
-        # Semántica de columnas importantes
         for table_name, columns in columns_info.items():
             for column in columns:
                 col_name = column['name']
@@ -373,17 +342,12 @@ class SchemaAnalyzer:
                         'filterable': self._is_filterable_column(column),
                         'aggregatable': self._is_aggregatable_column(column)
                     }
-        
-        # Consultas comunes pre-definidas
         mappings['common_queries'] = self._generate_common_queries(tables_info, columns_info)
-        
-        # Reglas de negocio detectadas
         mappings['business_rules'] = self._extract_business_rules(tables_info, columns_info)
         
         return mappings
     
     def _classify_entity_type(self, table_name: str) -> str:
-        """Clasificar tipo de entidad de la tabla"""
         core_entities = ['usuarios', 'alumnos', 'profesores', 'directivos', 'asignaturas', 'carreras', 'grupos']
         lookup_tables = ['categorias_', 'tipos_', 'estados_', 'niveles_']
         junction_tables = ['_grupos', '_asignatura_', '_reportes']
@@ -398,65 +362,45 @@ class SchemaAnalyzer:
             return 'transactional'
     
     def _classify_semantic_type(self, column_name: str, data_type: str) -> str:
-        """Clasificar el tipo semántico de la columna"""
         name_lower = column_name.lower()
-        
-        # Identificadores
         if 'id' in name_lower and ('int' in data_type or 'bigint' in data_type):
             return 'identifier'
         elif 'matricula' in name_lower or 'numero_empleado' in name_lower:
             return 'business_identifier'
-        
-        # Nombres y texto descriptivo
         elif any(word in name_lower for word in ['nombre', 'apellido', 'titulo']):
             return 'name'
         elif any(word in name_lower for word in ['descripcion', 'comentario', 'observaciones']):
             return 'description'
-        
-        # Contacto
         elif any(word in name_lower for word in ['correo', 'email']):
             return 'email'
         elif any(word in name_lower for word in ['telefono', 'celular']):
             return 'phone'
         elif 'direccion' in name_lower:
             return 'address'
-        
-        # Fechas y tiempo
         elif 'fecha' in name_lower or 'timestamp' in data_type:
             return 'date'
         elif 'hora' in name_lower and 'time' in data_type:
             return 'time'
-        
-        # Calificaciones y métricas
         elif any(word in name_lower for word in ['calificacion', 'promedio', 'nota']):
             return 'grade'
         elif any(word in name_lower for word in ['porcentaje', 'indice']):
             return 'percentage'
-        
-        # Estados y categorías
         elif any(word in name_lower for word in ['estado', 'estatus', 'nivel', 'tipo']):
             return 'status'
         elif 'activo' in name_lower or 'boolean' in data_type:
             return 'flag'
-        
-        # Monetario
         elif any(word in name_lower for word in ['precio', 'costo', 'monto']):
             return 'currency'
         
         return 'generic'
     
     def _is_ai_relevant_column(self, column_name: str, data_type: str) -> bool:
-        """Determinar si la columna es relevante para la IA"""
         name_lower = column_name.lower()
-        
-        # Columnas importantes para consultas
         important_patterns = [
             'nombre', 'apellido', 'matricula', 'calificacion', 'promedio',
             'estado', 'activo', 'fecha', 'tipo', 'nivel', 'descripcion',
             'observaciones', 'titulo', 'correo', 'telefono', 'carrera'
         ]
-        
-        # Excluir columnas técnicas
         exclude_patterns = [
             'created_at', 'updated_at', 'deleted_at', 'password',
             'token', 'hash', 'salt', 'session'
@@ -468,7 +412,6 @@ class SchemaAnalyzer:
         return any(pattern in name_lower for pattern in important_patterns)
     
     def _get_business_context(self, table_name: str) -> str:
-        """Obtener contexto de negocio de la tabla"""
         contexts = {
             'usuarios': 'Gestión de identidad y acceso',
             'alumnos': 'Información académica de estudiantes',
@@ -489,41 +432,35 @@ class SchemaAnalyzer:
         return contexts.get(table_name, 'Datos operacionales')
     
     def _is_core_entity(self, table_name: str, columns: List[Dict]) -> bool:
-        """Determinar si es una entidad central"""
         core_indicators = [
-            len(columns) > 5,  # Tiene varias columnas
-            any(col['name'] == 'id' and col['key_type'] == 'PRI' for col in columns),  # Tiene PK
+            len(columns) > 5, 
+            any(col['name'] == 'id' and col['key_type'] == 'PRI' for col in columns),  
             table_name in ['usuarios', 'alumnos', 'profesores', 'asignaturas', 'grupos']
         ]
         
         return sum(core_indicators) >= 2
     
     def _is_lookup_table(self, table_name: str, columns: List[Dict]) -> bool:
-        """Determinar si es una tabla de catálogo"""
         lookup_indicators = [
             'categoria' in table_name or 'tipo' in table_name,
-            len(columns) <= 6,  # Pocas columnas
-            any(col['name'] == 'nombre' for col in columns),  # Tiene campo nombre
-            any(col['name'] == 'activo' for col in columns)   # Tiene campo activo
+            len(columns) <= 6, 
+            any(col['name'] == 'nombre' for col in columns),  
+            any(col['name'] == 'activo' for col in columns)   
         ]
         
         return sum(lookup_indicators) >= 2
     
     def _is_junction_table(self, table_name: str, columns: List[Dict]) -> bool:
-        """Determinar si es una tabla de unión"""
         junction_indicators = [
             '_' in table_name and len(table_name.split('_')) >= 2,
             len([col for col in columns if col['name'].endswith('_id')]) >= 2,
-            len(columns) <= 8  # Generalmente pocas columnas
+            len(columns) <= 8 
         ]
         
         return sum(junction_indicators) >= 2
     
     def _calculate_entity_importance(self, table_name: str, table_info: Dict) -> float:
-        """Calcular importancia relativa de la entidad"""
         importance = 0.0
-        
-        # Basado en número de filas
         rows = table_info.get('estimated_rows', 0)
         if rows > 1000:
             importance += 0.3
@@ -531,19 +468,14 @@ class SchemaAnalyzer:
             importance += 0.2
         elif rows > 10:
             importance += 0.1
-        
-        # Basado en si es entidad central
         if table_name in ['usuarios', 'alumnos', 'profesores', 'calificaciones']:
             importance += 0.4
-        
-        # Basado en contexto de negocio
         if 'académica' in table_info.get('business_context', ''):
             importance += 0.3
         
         return min(importance, 1.0)
     
     def _detect_business_processes(self, tables_info: Dict, columns_info: Dict) -> List[Dict]:
-        """Detectar procesos de negocio basados en las tablas"""
         processes = [
             {
                 'name': 'Gestión Académica',
@@ -574,7 +506,6 @@ class SchemaAnalyzer:
         return processes
     
     def _generate_common_queries(self, tables_info: Dict, columns_info: Dict) -> Dict[str, str]:
-        """Generar consultas comunes basadas en el esquema"""
         return {
             'total_alumnos_activos': "SELECT COUNT(*) FROM alumnos WHERE estado_alumno = 'activo'",
             'promedio_general_sistema': "SELECT AVG(promedio_general) FROM alumnos WHERE estado_alumno = 'activo'",
@@ -584,10 +515,7 @@ class SchemaAnalyzer:
         }
     
     def _extract_business_rules(self, tables_info: Dict, columns_info: Dict) -> List[Dict]:
-        """Extraer reglas de negocio del esquema"""
         rules = []
-        
-        # Analizar constraints y checks
         for table_name, columns in columns_info.items():
             for column in columns:
                 if 'CHECK' in column.get('extra', ''):
@@ -604,8 +532,6 @@ class SchemaAnalyzer:
                         'table': table_name,
                         'rule': f"Tabla {table_name} usa borrado lógico con campo 'activo'"
                     })
-        
-        # Reglas de negocio específicas detectadas del esquema
         if 'calificaciones' in tables_info:
             rules.append({
                 'type': 'business_logic',
@@ -623,7 +549,6 @@ class SchemaAnalyzer:
         return rules
     
     def get_schema_summary(self) -> Dict[str, Any]:
-        """Obtener resumen del esquema para la IA"""
         if not self.schema_cache:
             self.analyze_complete_schema()
         
@@ -637,14 +562,11 @@ class SchemaAnalyzer:
         }
     
     def get_table_context(self, table_name: str) -> Dict[str, Any]:
-        """Obtener contexto específico de una tabla para la IA"""
         if not self.schema_cache:
             self.analyze_complete_schema()
         
         table_info = self.schema_cache['tables'].get(table_name, {})
         columns = self.schema_cache['columns'].get(table_name, [])
-        
-        # Encontrar relaciones
         related_tables = []
         for rel in self.schema_cache['relationships']:
             if rel['source_table'] == table_name:
@@ -671,7 +593,6 @@ class SchemaAnalyzer:
         }
     
     def _calculate_schema_stats(self, tables_info: Dict, columns_info: Dict) -> Dict[str, Any]:
-        """Calcular estadísticas del esquema"""
         total_columns = sum(len(cols) for cols in columns_info.values())
         
         return {
@@ -686,22 +607,18 @@ class SchemaAnalyzer:
         }
     
     def _is_searchable_column(self, column: Dict) -> bool:
-        """Determinar si la columna es buscable"""
         searchable_types = ['name', 'description', 'email', 'business_identifier']
         return column['semantic_type'] in searchable_types
     
     def _is_filterable_column(self, column: Dict) -> bool:
-        """Determinar si la columna es filtrable"""
         filterable_types = ['status', 'flag', 'date', 'grade', 'identifier']
         return column['semantic_type'] in filterable_types
     
     def _is_aggregatable_column(self, column: Dict) -> bool:
-        """Determinar si la columna es agregable"""
         aggregatable_types = ['grade', 'percentage', 'currency']
         return column['semantic_type'] in aggregatable_types
     
     def _get_column_business_meaning(self, table_name: str, column_name: str) -> str:
-        """Obtener significado de negocio de la columna"""
         meanings = {
             'calificaciones.calificacion_final': 'Calificación definitiva del alumno en la materia',
             'alumnos.promedio_general': 'Promedio ponderado de todas las materias',
@@ -714,7 +631,6 @@ class SchemaAnalyzer:
         return meanings.get(key, f"Campo {column_name} de la tabla {table_name}")
     
     def _get_table_common_queries(self, table_name: str) -> List[str]:
-        """Obtener consultas comunes para una tabla específica"""
         common_queries = {
             'alumnos': [
                 "SELECT COUNT(*) FROM alumnos WHERE estado_alumno = 'activo'",
@@ -736,7 +652,6 @@ class SchemaAnalyzer:
         return common_queries.get(table_name, [])
     
     def validate_schema_for_ai(self) -> Dict[str, Any]:
-        """Validar que el esquema sea adecuado para la IA"""
         if not self.schema_cache:
             self.analyze_complete_schema()
         
@@ -746,15 +661,11 @@ class SchemaAnalyzer:
             'recommendations': [],
             'missing_elements': []
         }
-        
-        # Verificar entidades principales
         required_entities = ['usuarios', 'alumnos', 'profesores', 'asignaturas', 'calificaciones']
         for entity in required_entities:
             if entity not in self.schema_cache['tables']:
                 validation['missing_elements'].append(f"Tabla requerida: {entity}")
                 validation['is_valid'] = False
-        
-        # Verificar columnas importantes
         important_columns = {
             'alumnos': ['promedio_general', 'estado_alumno'],
             'calificaciones': ['calificacion_final', 'estatus'],
@@ -767,8 +678,6 @@ class SchemaAnalyzer:
                 for col in columns:
                     if col not in table_columns:
                         validation['warnings'].append(f"Columna recomendada faltante: {table}.{col}")
-        
-        # Recomendaciones
         if len(self.schema_cache['relationships']) < 5:
             validation['recommendations'].append("Considerar agregar más relaciones entre tablas")
         

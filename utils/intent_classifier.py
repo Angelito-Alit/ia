@@ -11,15 +11,10 @@ class IntentClassifier:
         self._initialize_patterns()
     
     def initialize(self):
-        """Inicializar el clasificador"""
         logger.info("Clasificador de intenciones inicializado")
     
     def _initialize_patterns(self):
-        """Inicializar patrones de intenciones"""
-        
-        # Patrones principales por intención
         self.intent_patterns = {
-            # INTENCIONES ACADÉMICAS
             'ver_calificaciones': [
                 r'\b(ver|mostrar|consultar|revisar|checar)\b.*\b(calificaciones?|notas?|puntuaciones?|resultados?)\b',
                 r'\b(mis|mi)\b.*\b(calificaciones?|notas?)\b',
@@ -54,8 +49,6 @@ class IntentClassifier:
                 r'\b(horario.*de.*clases?|calendario.*academico)\b',
                 r'\b(proximas?.*clases?|siguiente.*clase)\b'
             ],
-            
-            # INTENCIONES DE GESTIÓN
             'mis_grupos': [
                 r'\b(mis?|mi)\b.*\b(grupos?|clases?|materias?.*asignadas?)\b',
                 r'\b(que.*grupos?)\b.*\b(tengo|doy|imparto)\b',
@@ -75,8 +68,6 @@ class IntentClassifier:
                 r'\b(que.*reportes?|cuantos?.*reportes?)\b',
                 r'\b(seguimiento|revision)\b.*\b(reportes?|estudiantes?)\b'
             ],
-            
-            # INTENCIONES DE ANÁLISIS
             'estadisticas_generales': [
                 r'\b(estadisticas?|resumen|panorama)\b.*\b(general|sistema|universidad)\b',
                 r'\b(como.*esta|como.*van)\b.*\b(las.*cosas?|todo|general)\b',
@@ -89,8 +80,6 @@ class IntentClassifier:
                 r'\b(cuantos?.*se.*van|indice.*desercion)\b',
                 r'\b(estudiantes?.*que.*abandonan|alumnos?.*baja)\b'
             ],
-            
-            # INTENCIONES DE BÚSQUEDA
             'buscar_alumno': [
                 r'\b(buscar|encontrar|localizar)\b.*\b(alumno|estudiante)\b',
                 r'\b(informacion.*de|datos.*de)\b.*\b(alumno|estudiante)\b',
@@ -102,8 +91,6 @@ class IntentClassifier:
                 r'\b(informacion.*del.*profesor|datos.*profesor)\b',
                 r'\b(profesor.*llamado|maestro.*nombre)\b'
             ],
-            
-            # INTENCIONES DE AYUDA
             'solicitar_ayuda': [
                 r'\b(necesito.*ayuda|requiero.*ayuda|pedir.*ayuda)\b',
                 r'\b(tengo.*problema|problema.*con)\b',
@@ -118,8 +105,6 @@ class IntentClassifier:
                 r'\b(instrucciones|tutorial|guia)\b'
             ]
         }
-        
-        # Intenciones específicas por rol
         self.role_specific_intents = {
             'alumno': [
                 'ver_calificaciones', 'mi_horario', 'solicitar_ayuda', 'como_hacer',
@@ -136,27 +121,18 @@ class IntentClassifier:
         }
     
     def classify(self, text, user_role='alumno'):
-        """Clasificar intención del texto"""
         try:
-            # Normalizar texto
             text_lower = text.lower()
-            
-            # Calcular scores para cada intención
             intent_scores = {}
             
             for intent, patterns in self.intent_patterns.items():
                 score = self._calculate_intent_score(text_lower, patterns)
-                
-                # Bonificar intenciones específicas del rol
                 if intent in self.role_specific_intents.get(user_role, []):
                     score *= 1.5
                 
                 intent_scores[intent] = score
-            
-            # Obtener la mejor intención
             best_intent = max(intent_scores.items(), key=lambda x: x[1])
             
-            # Si el score es muy bajo, clasificar como intención genérica
             if best_intent[1] < 0.3:
                 return self._classify_generic_intent(text_lower, user_role)
             
@@ -168,22 +144,17 @@ class IntentClassifier:
             return 'consulta_general'
     
     def _calculate_intent_score(self, text, patterns):
-        """Calcular score de una intención basado en patrones"""
         max_score = 0
         
         for pattern in patterns:
             matches = len(re.findall(pattern, text, re.IGNORECASE))
             if matches > 0:
-                # Score basado en número de matches y longitud del patrón
                 pattern_score = matches * (len(pattern.split()) / 10)
                 max_score = max(max_score, pattern_score)
         
         return max_score
     
     def _classify_generic_intent(self, text, user_role):
-        """Clasificar intenciones genéricas cuando no hay match específico"""
-        
-        # Palabras clave genéricas
         generic_keywords = {
             'consulta': ['ver', 'mostrar', 'consultar', 'revisar', 'checar'],
             'analisis': ['analizar', 'reporte', 'estadisticas', 'resumen'],
@@ -195,10 +166,7 @@ class IntentClassifier:
         for intent_type, keywords in generic_keywords.items():
             for keyword in keywords:
                 if keyword in text:
-                    # Mapear a intención específica según rol
                     return self._map_generic_to_specific(intent_type, user_role)
-        
-        # Detectar por tipo de pregunta
         question_words = {
             'que': 'consulta_general',
             'como': 'como_hacer',
@@ -211,8 +179,6 @@ class IntentClassifier:
         for q_word, intent in question_words.items():
             if q_word in text:
                 return intent
-        
-        # Default según rol
         default_intents = {
             'alumno': 'ver_calificaciones',
             'profesor': 'mis_grupos',
@@ -222,8 +188,6 @@ class IntentClassifier:
         return default_intents.get(user_role, 'consulta_general')
     
     def _map_generic_to_specific(self, generic_intent, user_role):
-        """Mapear intención genérica a específica según rol"""
-        
         mapping = {
             'alumno': {
                 'consulta': 'ver_calificaciones',
@@ -251,29 +215,19 @@ class IntentClassifier:
         return mapping.get(user_role, {}).get(generic_intent, 'consulta_general')
     
     def get_intent_confidence(self, text, intent):
-        """Obtener nivel de confianza de una intención"""
         if intent not in self.intent_patterns:
             return 0.0
         
         patterns = self.intent_patterns[intent]
         score = self._calculate_intent_score(text.lower(), patterns)
-        
-        # Normalizar score a 0-1
         confidence = min(score, 1.0)
         return confidence
     
     def suggest_clarification(self, text, user_role):
-        """Sugerir aclaración cuando la intención no es clara"""
-        
-        # Analizar qué tipo de información falta
         suggestions = []
-        
-        # Si menciona términos vagos
         vague_terms = ['cosas', 'todo', 'algo', 'eso', 'información']
         if any(term in text.lower() for term in vague_terms):
             suggestions.append("¿Puedes ser más específico sobre qué información necesitas?")
-        
-        # Si no especifica el ámbito
         if not any(domain in text.lower() for domain in ['calificaciones', 'alumnos', 'grupos', 'materias']):
             role_suggestions = {
                 'alumno': "¿Te refieres a tus calificaciones, horario o información general?",
@@ -281,8 +235,6 @@ class IntentClassifier:
                 'directivo': "¿Buscas estadísticas, reportes o información administrativa?"
             }
             suggestions.append(role_suggestions.get(user_role, "¿Puedes especificar el tema?"))
-        
-        # Si menciona tiempo pero no es específico
         time_words = ['ahora', 'actual', 'reciente']
         if any(word in text.lower() for word in time_words):
             suggestions.append("¿Te refieres al cuatrimestre actual o un período específico?")
@@ -290,7 +242,6 @@ class IntentClassifier:
         return suggestions
     
     def get_related_intents(self, intent):
-        """Obtener intenciones relacionadas"""
         related = {
             'ver_calificaciones': ['mi_horario', 'alumnos_riesgo'],
             'alumnos_riesgo': ['reportes_riesgo', 'solicitudes_pendientes'],
@@ -302,10 +253,7 @@ class IntentClassifier:
         return related.get(intent, [])
     
     def extract_intent_modifiers(self, text):
-        """Extraer modificadores de la intención (tiempo, filtros, etc.)"""
         modifiers = {}
-        
-        # Modificadores temporales
         temporal_patterns = {
             'actual': r'\b(actual|este|presente|ahora)\b',
             'pasado': r'\b(pasado|anterior|ultimo|previa?)\b',
@@ -316,8 +264,6 @@ class IntentClassifier:
             if re.search(pattern, text, re.IGNORECASE):
                 modifiers['temporal'] = modifier
                 break
-        
-        # Modificadores de cantidad
         quantity_patterns = {
             'todos': r'\b(todos?|todas?|completo|total)\b',
             'algunos': r'\b(algunos?|varias?|ciertos?)\b',
@@ -328,8 +274,6 @@ class IntentClassifier:
             if re.search(pattern, text, re.IGNORECASE):
                 modifiers['cantidad'] = modifier
                 break
-        
-        # Modificadores de urgencia
         urgency_patterns = {
             'urgente': r'\b(urgente|inmediato|rapido|ya)\b',
             'normal': r'\b(cuando.*puedas?|sin.*prisa)\b'
@@ -343,12 +287,8 @@ class IntentClassifier:
         return modifiers
     
     def is_question(self, text):
-        """Determinar si el texto es una pregunta"""
-        # Termina con signo de interrogación
         if text.strip().endswith('?'):
             return True
-        
-        # Empieza con palabra interrogativa
         question_starters = [
             'qué', 'que', 'cómo', 'como', 'cuándo', 'cuando', 'dónde', 'donde',
             'quién', 'quien', 'cuál', 'cual', 'cuánto', 'cuanto', 'cuánta', 'cuanta',
@@ -364,7 +304,6 @@ class IntentClassifier:
         return False
     
     def get_intent_examples(self, intent):
-        """Obtener ejemplos de frases para una intención"""
         examples = {
             'ver_calificaciones': [
                 "¿Cuáles son mis calificaciones?",
@@ -395,5 +334,4 @@ class IntentClassifier:
         return examples.get(intent, [])
     
     def get_all_intents_by_role(self, user_role):
-        """Obtener todas las intenciones disponibles para un rol"""
         return self.role_specific_intents.get(user_role, [])

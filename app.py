@@ -4,8 +4,6 @@ import os
 import logging
 import traceback
 import sys
-
-# Configurar logging para Vercel
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -13,15 +11,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Crear aplicación Flask
 app = Flask(__name__)
 CORS(app, origins=["*"])
 
-# Variables globales para conexión
 db_connection = None
 
 def get_db_connection():
-    """Crear conexión a la base de datos con manejo de errores"""
     global db_connection
     
     try:
@@ -50,7 +45,6 @@ def get_db_connection():
         return None
 
 def execute_query(query, params=None):
-    """Ejecutar consulta con manejo robusto de errores"""
     connection = None
     cursor = None
     
@@ -89,15 +83,12 @@ def execute_query(query, params=None):
             logger.error(f"Error cerrando conexión: {str(e)}")
 
 def classify_intent(message):
-    """Clasificador simple de intenciones"""
     try:
         if not message:
             return 'consulta_general'
             
         message_lower = message.lower().strip()
         logger.info(f"Clasificando mensaje: {message_lower}")
-        
-        # Patrones de intenciones
         patterns = {
             'ver_calificaciones': ['calificaciones', 'notas', 'puntuaciones', 'resultados'],
             'alumnos_riesgo': ['riesgo', 'problema', 'dificultad', 'ayuda', 'atencion'],
@@ -120,7 +111,6 @@ def classify_intent(message):
         return 'consulta_general'
 
 def generate_sql_query(intent, user_role='alumno', user_id=1):
-    """Generar consulta SQL simple y segura"""
     try:
         logger.info(f"Generando SQL para intent: {intent}, role: {user_role}")
         
@@ -182,7 +172,6 @@ def generate_sql_query(intent, user_role='alumno', user_id=1):
         return "SELECT 'Error en consulta' as mensaje", []
 
 def format_response(data, intent):
-    """Formatear respuesta de manera simple"""
     try:
         if not data:
             return "No encontré información para tu consulta. 🤔"
@@ -221,7 +210,6 @@ def format_response(data, intent):
 
 @app.route('/', methods=['GET'])
 def health_check():
-    """Health check básico"""
     try:
         return jsonify({
             "status": "ok",
@@ -234,7 +222,6 @@ def health_check():
 
 @app.route('/api/test', methods=['GET'])
 def test_connection():
-    """Probar conexión a la base de datos"""
     try:
         logger.info("Probando conexión a la base de datos...")
         result = execute_query("SELECT 1 as test, 'Conexión exitosa' as mensaje")
@@ -260,14 +247,12 @@ def test_connection():
 
 @app.route('/api/chat', methods=['POST', 'OPTIONS'])
 def chat():
-    """Endpoint principal para chat"""
     if request.method == 'OPTIONS':
         return jsonify({"status": "ok"})
         
     try:
         logger.info("Procesando mensaje de chat...")
         
-        # Obtener datos del request
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data provided"}), 400
@@ -281,14 +266,11 @@ def chat():
         
         logger.info(f"Mensaje: '{message}', Role: {user_role}, ID: {user_id}")
         
-        # Clasificar intención
         intent = classify_intent(message)
         
-        # Generar y ejecutar consulta
         query, params = generate_sql_query(intent, user_role, user_id)
         result_data = execute_query(query, params)
         
-        # Formatear respuesta
         response_text = format_response(result_data, intent)
         
         return jsonify({
@@ -296,7 +278,7 @@ def chat():
             "response": response_text,
             "intent": intent,
             "data_count": len(result_data) if result_data else 0,
-            "timestamp": "2024"
+            "timestamp": "2025"
         })
         
     except Exception as e:
@@ -312,7 +294,6 @@ def chat():
 
 @app.route('/api/suggestions', methods=['GET'])
 def get_suggestions():
-    """Obtener sugerencias simples"""
     try:
         role = request.args.get('role', 'alumno')
         
@@ -355,10 +336,8 @@ def internal_error(error):
     logger.error(f"Error 500: {str(error)}")
     return jsonify({"error": "Error interno del servidor"}), 500
 
-# Para desarrollo local
 if __name__ == '__main__':
     logger.info("Iniciando aplicación en modo desarrollo...")
     app.run(host='0.0.0.0', port=5000, debug=True)
 
-# Export para Vercel
 application = app

@@ -10,7 +10,7 @@ class QueryExecutor:
     def __init__(self, db_connection):
         self.db = db_connection
         self.query_cache = {}
-        self.cache_ttl = 300  # 5 minutos
+        self.cache_ttl = 300  
         self.execution_stats = {
             'total_queries': 0,
             'avg_execution_time': 0,
@@ -19,18 +19,13 @@ class QueryExecutor:
         }
     
     def execute_query(self, query: str, params: List = None, use_cache: bool = True) -> Dict[str, Any]:
-        """Ejecutar consulta SQL con manejo de errores y cache"""
         start_time = time.time()
         
         try:
-            # Validar consulta
             if not self._is_safe_query(query):
                 raise ValueError("Consulta no segura detectada")
             
-            # Generar clave de cache
             cache_key = self._generate_cache_key(query, params)
-            
-            # Verificar cache
             if use_cache and cache_key in self.query_cache:
                 cached_result = self.query_cache[cache_key]
                 if self._is_cache_valid(cached_result['timestamp']):
@@ -43,25 +38,17 @@ class QueryExecutor:
                         'execution_time': 0,
                         'row_count': len(cached_result['data']) if cached_result['data'] else 0
                     }
-            
-            # Ejecutar consulta
             logger.info(f"Ejecutando consulta: {query[:100]}...")
             result = self.db.execute_query(query, params)
             
             execution_time = time.time() - start_time
-            
-            # Actualizar estadísticas
             self._update_stats(execution_time)
-            
-            # Guardar en cache
             if use_cache:
                 self.query_cache[cache_key] = {
                     'data': result,
                     'timestamp': datetime.now()
                 }
                 self._cleanup_cache()
-            
-            # Procesar resultado
             processed_result = self._process_result(result)
             
             logger.info(f"Consulta ejecutada exitosamente en {execution_time:.2f}s - {len(result) if result else 0} filas")
@@ -91,7 +78,6 @@ class QueryExecutor:
             }
     
     def execute_batch_queries(self, queries: List[Dict]) -> List[Dict]:
-        """Ejecutar múltiples consultas en lote"""
         results = []
         
         for i, query_info in enumerate(queries):
@@ -112,14 +98,9 @@ class QueryExecutor:
         return results
     
     def _is_safe_query(self, query: str) -> bool:
-        """Validar que la consulta sea segura"""
         query_upper = query.upper().strip()
-        
-        # Verificar que sea SELECT
         if not query_upper.startswith('SELECT'):
             return False
-        
-        # Verificar palabras prohibidas
         dangerous_keywords = [
             'DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE',
             'TRUNCATE', 'EXEC', 'EXECUTE', 'MERGE', 'CALL', 'REPLACE',
@@ -130,8 +111,6 @@ class QueryExecutor:
             if keyword in query_upper:
                 logger.warning(f"Consulta rechazada por contener: {keyword}")
                 return False
-        
-        # Verificar inyección SQL básica
         sql_injection_patterns = [
             '--', '/*', '*/', 'xp_', 'sp_', 'UNION SELECT',
             'OR 1=1', 'AND 1=1', "' OR '", '" OR "'
@@ -145,13 +124,8 @@ class QueryExecutor:
         return True
     
     def _generate_cache_key(self, query: str, params: List = None) -> str:
-        """Generar clave única para cache"""
         import hashlib
-        
-        # Normalizar query
         normalized_query = ' '.join(query.split())
-        
-        # Incluir parámetros en la clave
         cache_string = normalized_query
         if params:
             cache_string += str(params)
@@ -159,11 +133,9 @@ class QueryExecutor:
         return hashlib.md5(cache_string.encode()).hexdigest()
     
     def _is_cache_valid(self, timestamp: datetime) -> bool:
-        """Verificar si el cache sigue siendo válido"""
         return (datetime.now() - timestamp).seconds < self.cache_ttl
     
     def _cleanup_cache(self):
-        """Limpiar entradas expiradas del cache"""
         current_time = datetime.now()
         expired_keys = []
         
@@ -173,20 +145,16 @@ class QueryExecutor:
         
         for key in expired_keys:
             del self.query_cache[key]
-        
-        # Limitar tamaño del cache
         if len(self.query_cache) > 100:
-            # Eliminar las entradas más antiguas
             sorted_cache = sorted(
                 self.query_cache.items(),
                 key=lambda x: x[1]['timestamp']
             )
             
-            for key, _ in sorted_cache[:20]:  # Eliminar 20 más antiguas
+            for key, _ in sorted_cache[:20]: 
                 del self.query_cache[key]
     
     def _process_result(self, result: List[Dict]) -> List[Dict]:
-        """Procesar resultado para optimizar formato"""
         if not result:
             return []
         
@@ -196,13 +164,10 @@ class QueryExecutor:
             processed_row = {}
             
             for key, value in row.items():
-                # Convertir Decimal a float
                 if hasattr(value, 'decimal'):
                     processed_row[key] = float(value)
-                # Convertir datetime a string
                 elif isinstance(value, datetime):
                     processed_row[key] = value.isoformat()
-                # Convertir None a string vacío para algunos casos
                 elif value is None and key in ['observaciones', 'descripcion', 'comentario']:
                     processed_row[key] = ''
                 else:
@@ -213,16 +178,12 @@ class QueryExecutor:
         return processed
     
     def _update_stats(self, execution_time: float):
-        """Actualizar estadísticas de ejecución"""
         self.execution_stats['total_queries'] += 1
-        
-        # Calcular promedio de tiempo de ejecución
         total_time = (self.execution_stats['avg_execution_time'] * 
                      (self.execution_stats['total_queries'] - 1) + execution_time)
         self.execution_stats['avg_execution_time'] = total_time / self.execution_stats['total_queries']
     
     def get_stats(self) -> Dict[str, Any]:
-        """Obtener estadísticas de ejecución"""
         cache_hit_rate = 0
         if self.execution_stats['total_queries'] > 0:
             cache_hit_rate = (self.execution_stats['cache_hits'] / 
@@ -236,22 +197,16 @@ class QueryExecutor:
         }
     
     def clear_cache(self):
-        """Limpiar todo el cache"""
         self.query_cache.clear()
         logger.info("Cache limpiado")
     
     def execute_analytical_query(self, query: str, params: List = None) -> Dict[str, Any]:
-        """Ejecutar consulta analítica con procesamiento adicional"""
         result = self.execute_query(query, params)
         
         if not result['success'] or not result['data']:
             return result
-        
-        # Convertir a DataFrame para análisis
         try:
             df = pd.DataFrame(result['data'])
-            
-            # Agregar análisis básico
             analysis = {
                 'row_count': len(df),
                 'column_count': len(df.columns),
@@ -259,8 +214,6 @@ class QueryExecutor:
                 'data_types': df.dtypes.to_dict(),
                 'summary_stats': {}
             }
-            
-            # Estadísticas para columnas numéricas
             numeric_columns = df.select_dtypes(include=['number']).columns
             for col in numeric_columns:
                 analysis['summary_stats'][col] = {
@@ -270,8 +223,6 @@ class QueryExecutor:
                     'max': float(df[col].max()) if not df[col].empty else 0,
                     'std': float(df[col].std()) if not df[col].empty else 0
                 }
-            
-            # Agregar análisis al resultado
             result['analysis'] = analysis
             
         except Exception as e:
@@ -281,7 +232,6 @@ class QueryExecutor:
         return result
     
     def test_connection(self) -> Dict[str, Any]:
-        """Probar conexión con consulta simple"""
         test_query = "SELECT 1 as test_connection, NOW() as current_time"
         
         result = self.execute_query(test_query, use_cache=False)
@@ -300,7 +250,6 @@ class QueryExecutor:
             }
     
     def get_table_info(self, table_name: str) -> Dict[str, Any]:
-        """Obtener información detallada de una tabla"""
         queries = {
             'schema': f"""
                 SELECT 
@@ -340,8 +289,6 @@ class QueryExecutor:
         return results
     
     def optimize_query(self, query: str) -> Dict[str, Any]:
-        """Analizar y sugerir optimizaciones para una consulta"""
-        # Ejecutar EXPLAIN
         explain_query = f"EXPLAIN {query}"
         explain_result = self.execute_query(explain_query, use_cache=False)
         
@@ -349,15 +296,10 @@ class QueryExecutor:
         
         if explain_result['success'] and explain_result['data']:
             for row in explain_result['data']:
-                # Analizar tipo de join
                 if row.get('type') == 'ALL':
                     suggestions.append("Considera agregar índices para evitar table scan completo")
-                
-                # Analizar uso de índices
                 if row.get('key') is None:
                     suggestions.append(f"La tabla {row.get('table')} no está usando índices")
-                
-                # Analizar número de filas examinadas
                 if row.get('rows') and int(row.get('rows')) > 10000:
                     suggestions.append("La consulta examina muchas filas, considera agregar filtros")
         
@@ -374,11 +316,8 @@ class QueryExecutor:
         }
     
     def _estimate_query_complexity(self, query: str) -> str:
-        """Estimar complejidad de la consulta"""
         query_upper = query.upper()
         complexity_score = 0
-        
-        # Factores de complejidad
         if 'JOIN' in query_upper:
             complexity_score += query_upper.count('JOIN') * 2
         
@@ -393,8 +332,6 @@ class QueryExecutor:
         
         if 'HAVING' in query_upper:
             complexity_score += 2
-        
-        # Clasificar complejidad
         if complexity_score <= 2:
             return 'BAJA'
         elif complexity_score <= 5:
